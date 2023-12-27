@@ -5,7 +5,7 @@ Aquí dejo el material usado en las charlas que del Datasummit 2019
 
 [Presentación Modern BI](../DataSummit2019/ModernBI/SQL%20Argentina%20-%20BI.pdf)
 
-También dejo los siguientes links que use para los demos en dicha charla.
+También dejo los siguientes links utilizados para los demos en dicha charla.
 
 [Migrate EDW to Azure]( https://github.com/microsoft/MCW-Migrate-EDW-to-Azure-SQL-Data-Warehouse/blob/master/Hands-on%20lab/HOL%20step-by-step%20-%20Migrate%20EDW%20to%20Azure%20SQL%20Data%20Warehouse.md)
 
