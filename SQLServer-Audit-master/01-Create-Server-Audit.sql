@@ -1,0 +1,39 @@
+-- create server audit
+
+USE [master]
+GO
+CREATE SERVER AUDIT [Audit-TriggerDB-Instance]
+TO FILE 
+(	FILEPATH = N'D:\TMP\AuditSQL\Instance'
+	,MAXSIZE = 2 GB
+	,MAX_ROLLOVER_FILES = 2147483647
+	,RESERVE_DISK_SPACE = OFF
+)
+WITH
+(	QUEUE_DELAY = 1000
+	,ON_FAILURE = CONTINUE
+)
+GO
+ALTER SERVER AUDIT [Audit-TriggerDB-Instance]  
+WITH (STATE = ON);
+
+--- para db
+
+USE [master]
+GO
+CREATE SERVER AUDIT [Audit-TriggerDB-DB]
+TO FILE 
+(	FILEPATH = N'D:\TMP\AuditSQL\Databases'
+	,MAXSIZE = 2 GB
+	,MAX_ROLLOVER_FILES = 2147483647
+	,RESERVE_DISK_SPACE = OFF
+)
+WITH
+(	QUEUE_DELAY = 1000
+	,ON_FAILURE = CONTINUE
+)
+GO
+ALTER SERVER AUDIT [Audit-TriggerDB-DB]  
+WITH (STATE = ON);
+
+
