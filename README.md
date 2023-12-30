@@ -1,1 +1,1 @@
-<img align="center" src="https://github.com/CesarM4rtinez/CesarM4rtinez/blob/main/miquel-parera-41J9-JTIP-c-unsplash.jpg?raw=true" alt="ovi-pw" />
+<img align="center" src="https://github.com/CesarM4rtinez/CesarM4rtinez/blob/main/miquel-parera-41J9-JTIP-c-unsplash.jpg?raw=true" width="1080" height="1920" />
