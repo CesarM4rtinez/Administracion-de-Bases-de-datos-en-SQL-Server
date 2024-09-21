@@ -1,0 +1,32 @@
+﻿# Parámetros de conexión
+$server = "PC-CESAR\TMA,1433"
+$outputFile = "C:\Users\Administrator\Documents\reporteEmpleados.csv"
+
+# Consulta SQL
+$query = @"
+SELECT TOP (100) [BusinessEntityID],
+      [Title],
+      [FirstName],
+      [MiddleName],
+      [LastName],
+      [Suffix],
+      [JobTitle],
+      [PhoneNumber],
+      [PhoneNumberType],
+      [EmailAddress],
+      [EmailPromotion],
+      [AddressLine1],
+      [AddressLine2],
+      [City],
+      [StateProvinceName],
+      [PostalCode],
+      [CountryRegionName],
+      [AdditionalContactInfo]
+FROM [AdventureWorks2019].[HumanResources].[vEmployee]
+"@
+
+# Comando sqlcmd
+$sqlcmd = "sqlcmd -S $server -Q `"$query`" -s `",`" -o `"$outputFile`" -E"
+
+# Ejecutar el comando
+Invoke-Expression $sqlcmd
