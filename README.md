@@ -6,4 +6,4 @@
 
 #
 ### Bussines Intelligence
-<img align="center" src="https://github.com/CesarM4rtinez/CesarM4rtinez-Portafolio-Administrador-de-SQL-Server/blob/main/bi.png?raw=true" width="1920" height="720" />
+<img align="center" src="https://github.com/CesarM4rtinez/CesarM4rtinez-Portafolio-Administrador-de-SQL-Server/blob/main/bi.png?raw=true" width="1920" height="480" />
