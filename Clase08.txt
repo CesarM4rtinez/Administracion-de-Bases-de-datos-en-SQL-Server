@@ -1,0 +1,203 @@
+--- Tiempo de esper vs. recursos
+select 
+cast( 100.0 * sum(signal_wait_time_ms) / sum(wait_time_ms) as numeric(20,2)) as [%cpu-waits],
+cast( 100.0 * sum(wait_time_ms -signal_wait_time_ms) / sum(wait_time_ms) as numeric(20,2)) as [%cpu-resource]
+from sys.dm_os_wait_stats 
+where wait_time_ms>0 
+and wait_type not in(
+'CLR_SEMAPHORE','LAZYWRITER_SLEEP','RESOURCE_QUEUE','SLEEP_TASK','SLEEP_SYSTEMTASK','SQLTRACE_BUFFER_FLUSH','WAITFOR','LOGMGR_QUEUE',
+'CHECKPOINT_QUEUE','REQUEST_FOR_DEADLOCK_SEARCH','XE_TIMER_EVENT','BROKER_TO_FLUSH','BROKER_TASK_STOP','CLR_MANUAL_EVENT','CLR_AUTO_EVENT',
+'DISPATCHER_QUEUE_SEMAPHORE','FT_IFTS_SCHEDULER_IDEL_WAIT','XE_DISPATCHER_WAIT','XE_DISPATCHER_JOIN','SQLTRACE_INCREMENTAL_FLUSH_SLEEP')
+--order by signal_wait_time_ms desc
+go
+-- Devuelve información de la lista de espera, esta lista de espera continene recursos en espera que estan esperando por recursos. 
+-- Cuando un recurso esta disponible la session e movida a la cola e ejecución. 
+-- La columnda de espera es el tiempo en el estado disponible para la ejecución:
+select session_id 
+        , exec_context_id 
+        , wait_type 
+        , wait_duration_ms 
+        , blocking_session_id 
+from sys.dm_os_waiting_tasks 
+where session_id > 50 and session_id!=@@spid
+order by session_id, exec_context_id 
+go
+----------------------------------------
+----------------------------------------
+select owt.session_id,wsql.text
+from sys.dm_os_waiting_tasks as owt
+inner join sys.dm_exec_requests as er on owt.session_id=er.session_id
+cross apply sys.dm_exec_sql_text (er.[sql_handle])as wsql
+where sql_handle is not null and er.session_id!=@@spid;
+go
+--
+select scheduler_id,is_online, is_idle,current_tasks_count,runnable_tasks_count from sys.dm_os_schedulers where scheduler_id<255
+go
+select 
+cast( 100.0 * sum(signal_wait_time_ms) / sum(wait_time_ms) as numeric(20,2)) as [%cpu-waits],
+cast( 100.0 * sum(wait_time_ms -signal_wait_time_ms) / sum(wait_time_ms) as numeric(20,2)) as [%cpu-resource]
+from sys.dm_os_wait_stats 
+where wait_time_ms>0 
+and wait_type not in(
+'CLR_SEMAPHORE','LAZYWRITER_SLEEP','RESOURCE_QUEUE','SLEEP_TASK','SLEEP_SYSTEMTASK','SQLTRACE_BUFFER_FLUSH','WAITFOR','LOGMGR_QUEUE',
+'CHECKPOINT_QUEUE','REQUEST_FOR_DEADLOCK_SEARCH','XE_TIMER_EVENT','BROKER_TO_FLUSH','BROKER_TASK_STOP','CLR_MANUAL_EVENT','CLR_AUTO_EVENT',
+'DISPATCHER_QUEUE_SEMAPHORE','FT_IFTS_SCHEDULER_IDEL_WAIT','XE_DISPATCHER_WAIT','XE_DISPATCHER_JOIN','SQLTRACE_INCREMENTAL_FLUSH_SLEEP')
+go
+-------------------------------------------
+-------------------------------------------
+
+---------------------
+-- Ejecuciones:
+
+
+SELECT 'dbcc inputbuffer('+cast(s.session_id as nvarchar(5))+');',ps.status,
+s.* 
+FROM sys.dm_exec_sessions AS s
+inner join sys.sysprocesses as ps
+on s.session_id=ps.spid
+WHERE EXISTS 
+    (
+    SELECT * 
+    FROM sys.dm_tran_session_transactions AS t
+    WHERE t.session_id = s.session_id
+    )
+    AND NOT EXISTS 
+    (
+    SELECT * 
+    FROM sys.dm_exec_requests AS r
+    WHERE r.session_id = s.session_id
+    )
+
+order by s.last_request_end_time asc;
+go
+
+use tempdb;
+go
+checkpoint;
+go
+--backup log tempdb with truncate_only;
+go
+dbcc shrinkfile(templog,1024);
+
+
+-- contar las sesiones 
+SELECT @@servername,login_name ,COUNT(session_id) AS session_count 
+FROM sys.dm_exec_sessions where session_id>50
+GROUP BY login_name order by session_count desc compute sum(COUNT(session_id));
+-- Listar el consumo de sesiones 
+SELECT login_name,SUM(cpu_time) AS tot_cpu_time,
+SUM(memory_usage)*8 AS tot_memory_usage_kb, AVG(total_elapsed_time) AS avg_elapsed_time, SUM(reads) AS tot_reads, SUM(writes) AS tot_writes,
+SUM(logical_reads) AS tot_logical_reads, COUNT(session_id) as tot_sessions
+FROM sys.dm_exec_sessions
+GROUP BY login_name
+order by tot_logical_reads desc
+
+-- la tabla pura:
+select * from sys.dm_exec_sessions
+
+-- con conexiones desde clientes:
+SELECT session_id, host_name, program_name, client_interface_name,
+login_name, cpu_time
+FROM sys.dm_exec_sessions
+
+--Encontrar cursores de ejecución prolongada:
+SELECT creation_time ,cursor_id 
+    ,name ,c.session_id ,login_name 
+FROM sys.dm_exec_cursors(0) AS c 
+JOIN sys.dm_exec_sessions AS s 
+   ON c.session_id = s.session_id 
+WHERE DATEDIFF(mi, c.creation_time, GETDATE()) > 5;
+
+-- Encontrar sesiones que tienen transacciones abiertas:
+SELECT s.* 
+FROM sys.dm_exec_sessions AS s
+WHERE EXISTS 
+    (
+    SELECT * 
+    FROM sys.dm_tran_session_transactions AS t
+    WHERE t.session_id = s.session_id
+    )
+    AND NOT EXISTS 
+    (
+    SELECT * 
+    FROM sys.dm_exec_requests AS r
+    WHERE r.session_id = s.session_id
+    )
+order by login_time desc;
+
+
+--- Queries:
+USE AdventureWorks2008;
+GO
+-- Queries con mayor consumo de CPU
+SELECT TOP 5 query_stats.query_hash AS "Query Hash", 
+    SUM(query_stats.total_worker_time) / SUM(query_stats.execution_count) AS "Avg CPU Time",
+    MIN(query_stats.statement_text) AS "Statement Text"
+FROM 
+    (SELECT QS.*, 56.87 79 20210567963
+    SUBSTRING(ST.text, (QS.statement_start_offset/2) + 1,
+    ((CASE statement_end_offset 
+        WHEN -1 THEN DATALENGTH(ST.text)
+        ELSE QS.statement_end_offset END 
+            - QS.statement_start_offset)/2) + 1) AS statement_text
+     FROM sys.dm_exec_query_stats AS QS
+     CROSS APPLY sys.dm_exec_sql_text(QS.sql_handle) as ST) as query_stats
+GROUP BY query_stats.query_hash
+ORDER BY 2 DESC;
+go
+----
+SELECT  query_stats.query_hash AS "Query Hash", SUM(query_stats.execution_count) as NroEjecuciones,
+    SUM(query_stats.total_worker_time) / SUM(query_stats.execution_count) AS "Avg CPU Time",
+    MIN(query_stats.statement_text) AS "Statement Text"
+FROM 
+    (SELECT QS.*, 
+    SUBSTRING(ST.text, (QS.statement_start_offset/2) + 1,
+    ((CASE statement_end_offset 
+        WHEN -1 THEN DATALENGTH(ST.text)
+        ELSE QS.statement_end_offset END 
+            - QS.statement_start_offset)/2) + 1) AS statement_text
+     FROM sys.dm_exec_query_stats AS QS
+     CROSS APPLY sys.dm_exec_sql_text(QS.sql_handle) as ST) as query_stats
+GROUP BY query_stats.query_hash
+ORDER BY 3 DESC;
+
+
+-- Queries con mayor consumo de CPU
+SELECT TOP 5 total_worker_time/execution_count AS [Avg CPU Time],
+Plan_handle, query_plan 
+FROM sys.dm_exec_query_stats AS qs
+CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle)
+ORDER BY total_worker_time/execution_count DESC;
+GO
+-- procedures:
+SELECT stxt.dbid,p.name AS [SP Name], qs.total_logical_reads AS [TotalLogicalReads],
+qs.total_logical_reads/qs.execution_count AS [AvgLogicalReads],qs.execution_count,
+ISNULL(qs.execution_count/DATEDIFF(Second, qs.cached_time, GETDATE()), 0) AS [Calls/Second],
+qs.total_elapsed_time, qs.total_elapsed_time/qs.execution_count
+AS [avg_elapsed_time], qs.cached_time,stxt.[text]
+FROM sys.procedures AS p
+INNER JOIN sys.dm_exec_procedure_stats AS qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) as stxt
+ON p.[object_id] = qs.[object_id]
+--WHERE qs.database_id = DB_ID()
+ORDER BY qs.total_elapsed_time DESC;
+-----
+select 
+'[' + sc.name + '].[' + object_name(ips.object_id,ips.database_id) + ']' as ObjectName,
+'[' + si.name + ']' as index_name, au.total_pages/128 as TotalMB,au.used_pages/128 as UsadoMB, au.data_pages/128 as DataMB,
+ips.avg_fragmentation_in_percent, ips.fragment_count, ips.avg_fragment_size_in_pages,ips.index_type_desc, 
+'alter index [' + si.name + '] on [' + sc.name + '].[' + object_name(ips.object_id,ips.database_id) + '] rebuild with (FILLFACTOR=90);' as strSQL
+-- ips.* 
+from master.sys.dm_db_index_physical_stats(db_id('NVADAM'),NULL,NULL,NULL,'DETAILED') as ips 
+inner join sys.tables as so on ips.object_id=so.object_id
+inner join sys.indexes AS si on ips.object_id = si.object_id AND ips.index_id = si.index_id
+inner join sys.schemas as sc on so.schema_id=sc.schema_id
+inner join sys.partitions as pt on pt.object_id=so.object_id and si.index_id=pt.index_id
+inner join sys.allocation_units as au on pt.partition_id=au.container_id
+where ips.avg_fragmentation_in_percent>=10 and ips.index_id>0;
+GO
+SELECT OBJECT_NAME(i.object_id) AS TableName, p.rows
+FROM sys.indexes i
+INNER JOIN sys.partitions p ON p.object_id = i.object_id AND p.index_id = i.index_id
+WHERE i.index_id = 0
+ORDER BY p.rows DESC
