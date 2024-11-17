@@ -1,0 +1,2 @@
+PARA HACER PRUEBAS DE ESTRES EN DISCOS DE BASES DE DATOS (DISKSPD), HERRAMIENTA DE MICROSOFT:
+https://learn.microsoft.com/es-es/azure-stack/hci/manage/diskspd-overview
